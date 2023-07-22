@@ -1,9 +1,17 @@
 package com.example.gymtimer
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.os.Binder
+import android.os.Build
 import android.os.IBinder
+import android.util.Log
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import java.util.Random
 
 class MainService: Service() {
@@ -22,6 +30,55 @@ class MainService: Service() {
         get() = mGenerator.nextInt(100)
 
     override fun onBind(p0: Intent?): IBinder? {
+
+//        createNotificationChannel()
+//        // Create an explicit intent for an Activity in your app
+//        val intent = Intent(this, MainService::class.java).apply {
+//            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+//        }
+//        val pendingIntent: PendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+//
+//        val builder = NotificationCompat.Builder(this, "123")
+//            .setSmallIcon(R.drawable.ic_launcher_foreground)
+//            .setContentTitle("My notification")
+//            .setContentText("Hello World!")
+//            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+//            // Set the intent that will fire when the user taps the notification
+////            .setContentIntent(pendingIntent)
+////            .setAutoCancel(true)
+//
+//        with(NotificationManagerCompat.from(this)) {
+//            // notificationId is a unique int for each notification that you must define
+//            notify(0, builder.build())
+//            Log.v("kean", "monkey magic")
+//        }
+
         return binder
+    }
+
+    override fun onUnbind(intent: Intent?): Boolean {
+        Log.v("kean", "onUnbind()")
+        return super.onUnbind(intent)
+    }
+
+    override fun onRebind(intent: Intent?) {
+        Log.v("kean", "onRebind()")
+        super.onRebind(intent)
+    }
+
+    //it is safe to call this repeatedly because creating an existing notification channel performs no operation
+    private fun createNotificationChannel() {
+        //require API 26+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val name = "test";
+            val descriptionText = "description"
+            val importance = NotificationManager.IMPORTANCE_DEFAULT
+            val channel = NotificationChannel("123", name, importance).apply {
+                description = descriptionText
+            }
+            // Register the channel with the system
+            val notificationManager: NotificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
     }
 }

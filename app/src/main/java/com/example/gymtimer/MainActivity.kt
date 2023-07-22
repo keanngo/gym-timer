@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.Bundle
 import android.os.IBinder
+import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -31,12 +32,14 @@ class MainActivity : ComponentActivity() {
     //define callbacks for service binding, passed to bindService()
     private val connection = object: ServiceConnection {
         override fun onServiceConnected(className: ComponentName, service: IBinder) {
+            Log.v("kean", "service connected")
             val binder = service as MainService.MainBinder
             mService = binder.getService()
             mBound = true
         }
 
         override fun onServiceDisconnected(p0: ComponentName) {
+            Log.v("kean", "service disconnected")
             mBound = false
         }
 
@@ -60,14 +63,18 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        Intent(this, MainService::class.java).also { intent ->
-            bindService(intent, connection, Context.BIND_AUTO_CREATE)}
+        Log.v("kean", "hello")
+        if(mBound){
+            unbindService(connection)
+            mBound = false
+        }
     }
 
     override fun onStop() {
+        Log.v("kean", "onStop()")
+        Intent(this, MainService::class.java).also { intent ->
+            bindService(intent, connection, Context.BIND_AUTO_CREATE)}
         super.onStop()
-        unbindService(connection)
-        mBound = false
     }
 
     fun onButtonClick(){
