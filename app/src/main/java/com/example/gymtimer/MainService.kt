@@ -11,7 +11,6 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
 import java.util.Random
 
 class MainService: Service() {
@@ -29,29 +28,37 @@ class MainService: Service() {
     val randomNumber: Int
         get() = mGenerator.nextInt(100)
 
+    val counter = 1;
+
     override fun onBind(p0: Intent?): IBinder? {
 
-//        createNotificationChannel()
-//        // Create an explicit intent for an Activity in your app
-//        val intent = Intent(this, MainService::class.java).apply {
+        createNotificationChannel()
+        // Create an explicit intent for an Activity in your app
+        val intent = Intent(this, MyBroadcastReceiver::class.java).apply {
 //            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-//        }
-//        val pendingIntent: PendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
-//
-//        val builder = NotificationCompat.Builder(this, "123")
-//            .setSmallIcon(R.drawable.ic_launcher_foreground)
-//            .setContentTitle("My notification")
-//            .setContentText("Hello World!")
-//            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-//            // Set the intent that will fire when the user taps the notification
-////            .setContentIntent(pendingIntent)
-////            .setAutoCancel(true)
-//
+            action = "com.example.UPDATE_NOTIFICATION"
+            putExtra("COUNTER", counter)
+        }
+//        val intent = Intent(this, MyBroadcastReceiver::class.java)
+//        intent.action = "UPDATE_NOTIFICATION"
+
+        val pendingIntent: PendingIntent = PendingIntent.getBroadcast(this, counter, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+
+        val builder = NotificationCompat.Builder(this, "123")
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle("My notification")
+            .setContentText("Counter: $counter")
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .addAction(
+                androidx.core.R.drawable.notification_bg_normal, "Update",
+                pendingIntent)
+
 //        with(NotificationManagerCompat.from(this)) {
 //            // notificationId is a unique int for each notification that you must define
 //            notify(0, builder.build())
-//            Log.v("kean", "monkey magic")
 //        }
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.notify(0, builder.build());
 
         return binder
     }
