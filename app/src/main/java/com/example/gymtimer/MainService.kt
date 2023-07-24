@@ -28,34 +28,31 @@ class MainService: Service() {
     val randomNumber: Int
         get() = mGenerator.nextInt(100)
 
-    private val counter = 180;
-
     override fun onBind(p0: Intent?): IBinder? {
 
         createNotificationChannel()
 
         // Create an explicit intent for an Activity in your app
         val startIntent = Intent(this, MyBroadcastReceiver::class.java).apply {
-            action = "com.example.START"
-            putExtra("COUNTER", counter)
+            action = "START"
         }
         val incrementIntent = Intent(this, MyBroadcastReceiver::class.java).apply {
-            action = "com.example.INCREMENT"
-            putExtra("COUNTER", counter)
+            action = "INCREMENT"
+            putExtra("INCREMENT", 10000)
         }
         val decrementIntent = Intent(this, MyBroadcastReceiver::class.java).apply {
-            action = "com.example.DECREMENT"
-            putExtra("COUNTER", counter)
+            action = "DECREMENT"
+            putExtra("DECREMENT", 5000)
         }
 
-        val startPendingIntent: PendingIntent = PendingIntent.getBroadcast(this, counter, startIntent, PendingIntent.FLAG_UPDATE_CURRENT)
-        val incrementPendingIntent: PendingIntent = PendingIntent.getBroadcast(this, counter, incrementIntent, PendingIntent.FLAG_UPDATE_CURRENT)
-        val decrementPendingIntent: PendingIntent = PendingIntent.getBroadcast(this, counter, decrementIntent, PendingIntent.FLAG_UPDATE_CURRENT)
+        val startPendingIntent: PendingIntent = PendingIntent.getBroadcast(this, 0, startIntent, PendingIntent.FLAG_UPDATE_CURRENT)
+        val incrementPendingIntent: PendingIntent = PendingIntent.getBroadcast(this, 0, incrementIntent, PendingIntent.FLAG_UPDATE_CURRENT)
+        val decrementPendingIntent: PendingIntent = PendingIntent.getBroadcast(this, 0, decrementIntent, PendingIntent.FLAG_UPDATE_CURRENT)
 
         val builder = NotificationCompat.Builder(this, "123")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle("My notification")
-            .setContentText("$counter")
+            .setContentText("180 seconds")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .addAction(
                 androidx.core.R.drawable.notification_bg_normal, "Start",
@@ -67,10 +64,6 @@ class MainService: Service() {
                 androidx.core.R.drawable.notification_bg_normal, "-",
                 decrementPendingIntent)
 
-//        with(NotificationManagerCompat.from(this)) {
-//            // notificationId is a unique int for each notification that you must define
-//            notify(0, builder.build())
-//        }
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(0, builder.build());
 
