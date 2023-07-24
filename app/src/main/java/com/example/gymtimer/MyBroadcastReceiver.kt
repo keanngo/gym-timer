@@ -16,6 +16,7 @@ class MyBroadcastReceiver: BroadcastReceiver(){
         var MAX_TIME: Long = 180000
         lateinit var countDownTimer: CountDownTimer
         var currentTime: Long = MAX_TIME
+        var newMaxTime: Long = MAX_TIME
     }
     private var isTimerRunning = false
     override fun onReceive(context: Context, intent: Intent) {
@@ -25,6 +26,10 @@ class MyBroadcastReceiver: BroadcastReceiver(){
             Log.v("kean", isTimerRunning.toString())
             //if timer is not running, start it
             if (!isTimerRunning){
+                if (newMaxTime != currentTime){
+                    currentTime = newMaxTime
+                    MAX_TIME = newMaxTime
+                }
                 startTimer(context);
             }//if we get an intent while the timer is running, stop it
             else {
@@ -40,10 +45,18 @@ class MyBroadcastReceiver: BroadcastReceiver(){
                 currentTime += timeInc
                 startTimer(context);
             }else{
-                currentTime = MAX_TIME
-                val secondsRemaining = currentTime / 1000
-                val timerText = "$secondsRemaining seconds"
-                updateNotification(context, timerText, false)
+                if(currentTime != MAX_TIME){
+                    currentTime = MAX_TIME
+                    val secondsRemaining = currentTime / 1000
+                    val timerText = "$secondsRemaining seconds"
+                    updateNotification(context, timerText, false)
+                }else{
+                    val timeInc = intent.getLongExtra("INCREMENT", 10000)
+                    newMaxTime += timeInc
+                    val secondsRemaining = newMaxTime / 1000
+                    val timerText = "$secondsRemaining seconds"
+                    updateNotification(context, timerText, false)
+                }
             }
         }
         else if("DECREMENT" == intent.action){
@@ -54,10 +67,18 @@ class MyBroadcastReceiver: BroadcastReceiver(){
                 currentTime -= timeDec
                 startTimer(context);
             }else{
-                currentTime = MAX_TIME
-                val secondsRemaining = currentTime / 1000
-                val timerText = "$secondsRemaining seconds"
-                updateNotification(context, timerText, false)
+                if(currentTime != MAX_TIME){
+                    currentTime = MAX_TIME
+                    val secondsRemaining = currentTime / 1000
+                    val timerText = "$secondsRemaining seconds"
+                    updateNotification(context, timerText, false)
+                }else{
+                    val timeDec = intent.getLongExtra("DECREMENT", 5000)
+                    newMaxTime -= timeDec
+                    val secondsRemaining = newMaxTime / 1000
+                    val timerText = "$secondsRemaining seconds"
+                    updateNotification(context, timerText, false)
+                }
             }
         }
     }
