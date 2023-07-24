@@ -42,7 +42,7 @@ class MainService: Service() {
         }
         val decrementIntent = Intent(this, MyBroadcastReceiver::class.java).apply {
             action = "DECREMENT"
-            putExtra("DECREMENT", 5000)
+            putExtra("DECREMENT", 10000)
         }
 
         val startPendingIntent: PendingIntent = PendingIntent.getBroadcast(this, 0, startIntent, PendingIntent.FLAG_UPDATE_CURRENT)

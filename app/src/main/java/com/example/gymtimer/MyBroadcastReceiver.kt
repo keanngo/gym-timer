@@ -63,7 +63,7 @@ class MyBroadcastReceiver: BroadcastReceiver(){
             isTimerRunning = intent.getBooleanExtra("TIMER_RUNNING", false)
             if(isTimerRunning){
                 pauseTimer(context);
-                val timeDec = intent.getLongExtra("DECREMENT", 5000)
+                val timeDec = intent.getLongExtra("DECREMENT", 10000)
                 currentTime -= timeDec
                 startTimer(context);
             }else{
@@ -73,7 +73,7 @@ class MyBroadcastReceiver: BroadcastReceiver(){
                     val timerText = "$secondsRemaining seconds"
                     updateNotification(context, timerText, false)
                 }else{
-                    val timeDec = intent.getLongExtra("DECREMENT", 5000)
+                    val timeDec = intent.getLongExtra("DECREMENT", 10000)
                     newMaxTime -= timeDec
                     val secondsRemaining = newMaxTime / 1000
                     val timerText = "$secondsRemaining seconds"
@@ -128,7 +128,7 @@ class MyBroadcastReceiver: BroadcastReceiver(){
         }
         val decrementIntent = Intent(context, MyBroadcastReceiver::class.java).apply {
             action = "DECREMENT"
-            putExtra("DECREMENT", 5000.toLong())
+            putExtra("DECREMENT", 10000.toLong())
             putExtra("TIMER_RUNNING", isTimerRunning)
         }
 
