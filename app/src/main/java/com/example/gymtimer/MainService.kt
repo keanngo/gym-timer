@@ -6,15 +6,17 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.media.Ringtone
+import android.media.RingtoneManager
 import android.os.Binder
 import android.os.Build
-import android.os.CountDownTimer
 import android.os.IBinder
 import android.util.Log
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import java.util.Random
 import java.util.concurrent.TimeUnit
+
 
 class MainService: Service() {
 
@@ -27,17 +29,34 @@ class MainService: Service() {
     }
 
     private val mGenerator = Random()
-
-    companion object {
-        var MAX_TIME: Long = 180000
-//        lateinit var countDownTimer: CountDownTimer
-        lateinit var countDownTimer: PreciseCountdown
-        var currentTime: Long = MAX_TIME
-        var newMaxTime: Long = MAX_TIME
-    }
+    var MAX_TIME: Long = 180000
+    lateinit var countDownTimer: PreciseCountdown
+    var currentTime: Long = MAX_TIME
+    var newMaxTime: Long = MAX_TIME
     private var isTimerRunning = false
 
+    private var ringtone: Ringtone? = null
+    private var isRingtonePlaying: Boolean = false
+
+    private fun startRingtone(context: Context) {
+        if (!isRingtonePlaying) {
+            val ringtoneUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+            ringtone = RingtoneManager.getRingtone(context.applicationContext, ringtoneUri)
+            ringtone?.play()
+            isRingtonePlaying = true
+        }
+    }
+    private fun stopRingtone() {
+        if (isRingtonePlaying) {
+            ringtone?.stop()
+            isRingtonePlaying = false
+        }
+    }
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
+        if(isRingtonePlaying){
+            stopRingtone()
+            isRingtonePlaying = false
+        }
         if("QUIT" == intent.action){
             Log.v("kean", "This was hit")
             stopSelf()
@@ -60,10 +79,10 @@ class MainService: Service() {
 
         }
         else if("INCREMENT" == intent.action){
-            addToTime(intent, "INCREMENT", 10000)
+            addToTime(intent, "INCREMENT", 30000)
         }
         else if("DECREMENT" == intent.action){
-            addToTime(intent, "DECREMENT", -10000)
+            addToTime(intent, "DECREMENT", -30000)
         }
         return super.onStartCommand(intent, flags, startId)
     }
@@ -88,9 +107,6 @@ class MainService: Service() {
     }
 
     private fun textNotification(timeLong:Long, isTimerRunning:Boolean){
-//        var time = (timeLong * 0.001f).roundToLong()
-//        Log.v("kean", time.toString())
-        var ms = timeLong % 1000
         var time = TimeUnit.MILLISECONDS.toSeconds(timeLong)
         var minutes = time/60
         var seconds = time % 60
@@ -104,8 +120,7 @@ class MainService: Service() {
         }else{
             "$seconds"
         }
-        var timerText = "$minutesText:$secondsText:$ms"
-//        var timerText = "$timeLong"
+        var timerText = "$minutesText:$secondsText"
         updateNotification(this, timerText, isTimerRunning)
     }
 
@@ -133,38 +148,8 @@ class MainService: Service() {
         Log.v("kean", "onRebind()")
         super.onRebind(intent)
     }
-
-    //it is safe to call this repeatedly because creating an existing notification channel performs no operation
-    private fun createNotificationChannel() {
-        //require API 26+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = "test";
-            val descriptionText = "description"
-            val importance = NotificationManager.IMPORTANCE_DEFAULT
-            val channel = NotificationChannel("12345", name, importance).apply {
-                description = descriptionText
-                setSound(null, null)
-            }
-            // Register the channel with the system
-            val notificationManager: NotificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(channel)
-        }
-    }
     private fun startTimer(context: Context) {
 
-        // Start the timer and update the notification text
-//        countDownTimer = object : CountDownTimer(currentTime, 100) {
-//            override fun onTick(millisUntilFinished: Long) {
-//                textNotification(millisUntilFinished, true)
-//                currentTime = millisUntilFinished
-//            }
-//
-//            override fun onFinish() {
-//                // Timer finished, update the notification
-//                updateNotification(context, "00:00", false)
-//                currentTime = MAX_TIME
-//            }
-//        }.start()
         countDownTimer = object:PreciseCountdown(currentTime, 1000){
             override fun onTick(timeLeft: Long) {
                 textNotification(timeLeft, true)
@@ -172,6 +157,7 @@ class MainService: Service() {
             }
 
             override fun onFinished() {
+                startRingtone(applicationContext)
                 onTick(0);
                 updateNotification(context, "00:00", false)
                 currentTime = MAX_TIME
@@ -188,7 +174,6 @@ class MainService: Service() {
         Log.v("kean","pause timer pressed")
         if (countDownTimer != null) {
             Log.v("kean", "hello")
-//            countDownTimer.cancel()
             countDownTimer.stop()
             isTimerRunning = false
             textNotification(currentTime, false)
@@ -204,12 +189,12 @@ class MainService: Service() {
         }
         val incrementIntent = Intent(context, MainService::class.java).apply {
             action = "INCREMENT"
-            putExtra("INCREMENT", 10000.toLong())
+            putExtra("INCREMENT", 30000.toLong())
             putExtra("TIMER_RUNNING", isTimerRunning)
         }
         val decrementIntent = Intent(context, MainService::class.java).apply {
             action = "DECREMENT"
-            putExtra("DECREMENT", (-10000).toLong())
+            putExtra("DECREMENT", (-30000).toLong())
             putExtra("TIMER_RUNNING", isTimerRunning)
         }
         val quitIntent = Intent(context, MainService::class.java).apply {
@@ -221,12 +206,7 @@ class MainService: Service() {
         val decrementPendingIntent: PendingIntent = PendingIntent.getService(context, 0, decrementIntent, PendingIntent.FLAG_UPDATE_CURRENT)
         val quitPendingIntent: PendingIntent = PendingIntent.getService(context, 0, quitIntent, PendingIntent.FLAG_MUTABLE)
 
-        var buttonText:String
-        if(isTimerRunning){
-            buttonText = "Stop"
-        }else{
-            buttonText = "Start"
-        }
+        var buttonText = if (isTimerRunning) "Stop" else "Start"
 
         //layout inflatoer
         val contentView = RemoteViews(packageName, R.layout.custom_notification)
@@ -235,6 +215,7 @@ class MainService: Service() {
         contentView.setOnClickPendingIntent(R.id.decrementButton, decrementPendingIntent)
         contentView.setTextViewText(R.id.timerTextView, "$contentText")
         contentView.setTextViewText(R.id.startButton, buttonText)
+
 
         // Increase the counter and update the notification
         val builder: NotificationCompat.Builder =
@@ -245,9 +226,26 @@ class MainService: Service() {
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setCustomContentView(contentView)
                 .setDeleteIntent(quitPendingIntent)
-
+                .setDefaults(NotificationCompat.DEFAULT_SOUND)
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(notificationId, builder.build());
+    }
+
+    //it is safe to call this repeatedly because creating an existing notification channel performs no operation
+    private fun createNotificationChannel() {
+        //require API 26+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val name = "test";
+            val descriptionText = "description"
+            val importance = NotificationManager.IMPORTANCE_DEFAULT
+            val channel = NotificationChannel("12345", name, importance).apply {
+                description = descriptionText
+//                setSound(null, null)
+            }
+            // Register the channel with the system
+            val notificationManager: NotificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
     }
 }

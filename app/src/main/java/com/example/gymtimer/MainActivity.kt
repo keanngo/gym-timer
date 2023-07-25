@@ -29,6 +29,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var mService: MainService
     private var mBound: Boolean = false
 
+    private lateinit var countDownTimer: PreciseCountdown
+
     //define callbacks for service binding, passed to bindService()
     private val connection = object: ServiceConnection {
         override fun onServiceConnected(className: ComponentName, service: IBinder) {
@@ -65,6 +67,7 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         Log.v("kean", "hello")
         if(mBound){
+
             unbindService(connection)
             mBound = false
         }
