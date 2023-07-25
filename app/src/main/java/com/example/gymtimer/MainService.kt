@@ -30,7 +30,8 @@ class MainService: Service() {
 
     companion object {
         var MAX_TIME: Long = 180000
-        lateinit var countDownTimer: CountDownTimer
+//        lateinit var countDownTimer: CountDownTimer
+        lateinit var countDownTimer: PreciseCountdown
         var currentTime: Long = MAX_TIME
         var newMaxTime: Long = MAX_TIME
     }
@@ -89,6 +90,7 @@ class MainService: Service() {
     private fun textNotification(timeLong:Long, isTimerRunning:Boolean){
 //        var time = (timeLong * 0.001f).roundToLong()
 //        Log.v("kean", time.toString())
+        var ms = timeLong % 1000
         var time = TimeUnit.MILLISECONDS.toSeconds(timeLong)
         var minutes = time/60
         var seconds = time % 60
@@ -102,7 +104,7 @@ class MainService: Service() {
         }else{
             "$seconds"
         }
-        var timerText = "$minutesText:$secondsText"
+        var timerText = "$minutesText:$secondsText:$ms"
 //        var timerText = "$timeLong"
         updateNotification(this, timerText, isTimerRunning)
     }
@@ -151,25 +153,43 @@ class MainService: Service() {
     private fun startTimer(context: Context) {
 
         // Start the timer and update the notification text
-        countDownTimer = object : CountDownTimer(currentTime, 100) {
-            override fun onTick(millisUntilFinished: Long) {
-                textNotification(millisUntilFinished, true)
-                currentTime = millisUntilFinished
+//        countDownTimer = object : CountDownTimer(currentTime, 100) {
+//            override fun onTick(millisUntilFinished: Long) {
+//                textNotification(millisUntilFinished, true)
+//                currentTime = millisUntilFinished
+//            }
+//
+//            override fun onFinish() {
+//                // Timer finished, update the notification
+//                updateNotification(context, "00:00", false)
+//                currentTime = MAX_TIME
+//            }
+//        }.start()
+        countDownTimer = object:PreciseCountdown(currentTime, 1000){
+            override fun onTick(timeLeft: Long) {
+                textNotification(timeLeft, true)
+                currentTime = timeLeft
             }
 
-            override fun onFinish() {
-                // Timer finished, update the notification
+            override fun onFinished() {
+                onTick(0);
                 updateNotification(context, "00:00", false)
                 currentTime = MAX_TIME
             }
-        }.start()
+
+        }
+        countDownTimer.start()
+
+
+
     }
 
     private fun pauseTimer(context: Context) {
         Log.v("kean","pause timer pressed")
         if (countDownTimer != null) {
             Log.v("kean", "hello")
-            countDownTimer.cancel()
+//            countDownTimer.cancel()
+            countDownTimer.stop()
             isTimerRunning = false
             textNotification(currentTime, false)
         }
