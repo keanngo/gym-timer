@@ -92,14 +92,14 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun Greeting(name: String, modifier: Modifier = Modifier ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    Button(
-        onClick = {  },
-        interactionSource = interactionSource) {
-        Text(if (isPressed) "Pressed!" else "Not pressed")
-        }
+//    val interactionSource = remember { MutableInteractionSource() }
+//    val isPressed by interactionSource.collectIsPressedAsState()
+//
+//    Button(
+//        onClick = {  },
+//        interactionSource = interactionSource) {
+//        Text(if (isPressed) "Pressed!" else "Not pressed")
+//        }
 }
 //https://github.com/JustAmalll/Stopwatch/blob/master/app/src/main/java/dev/amal/stopwatch/MainActivity.kt
 //test
