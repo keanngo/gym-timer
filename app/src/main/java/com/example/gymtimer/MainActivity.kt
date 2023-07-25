@@ -77,13 +77,6 @@ class MainActivity : ComponentActivity() {
         super.onStop()
     }
 
-    fun onButtonClick(){
-        if (mBound) {
-            val num: Int = mService.randomNumber
-            Toast.makeText(this, "number: $num", Toast.LENGTH_SHORT).show()
-        }
-    }
-
     override fun onDestroy() {
         super.onDestroy()
     }

@@ -11,8 +11,10 @@ import android.os.Build
 import android.os.CountDownTimer
 import android.os.IBinder
 import android.util.Log
+import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import java.util.Random
+import java.util.concurrent.TimeUnit
 
 class MainService: Service() {
 
@@ -35,12 +37,17 @@ class MainService: Service() {
     private var isTimerRunning = false
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
+        if("QUIT" == intent.action){
+            Log.v("kean", "This was hit")
+            stopSelf()
+        }
+
         if("START" == intent.action){
+            Log.v("kean","start is hit")
             isTimerRunning = intent.getBooleanExtra("TIMER_RUNNING", false)
-            Log.v("kean", isTimerRunning.toString())
             //if timer is not running, start it
             if (!isTimerRunning){
-                if (newMaxTime != currentTime){
+                if (newMaxTime != MAX_TIME){
                     currentTime = newMaxTime
                     MAX_TIME = newMaxTime
                 }
@@ -52,50 +59,52 @@ class MainService: Service() {
 
         }
         else if("INCREMENT" == intent.action){
-            isTimerRunning = intent.getBooleanExtra("TIMER_RUNNING", false)
-            if(isTimerRunning){
-                pauseTimer(this);
-                val timeInc = intent.getLongExtra("INCREMENT", 10000)
-                currentTime += timeInc
-                startTimer(this);
-            }else{
-                if(currentTime != MAX_TIME){
-                    currentTime = MAX_TIME
-                    val secondsRemaining = currentTime / 1000
-                    val timerText = "$secondsRemaining seconds"
-                    updateNotification(this, timerText, false)
-                }else{
-                    val timeInc = intent.getLongExtra("INCREMENT", 10000)
-                    newMaxTime += timeInc
-                    val secondsRemaining = newMaxTime / 1000
-                    val timerText = "$secondsRemaining seconds"
-                    updateNotification(this, timerText, false)
-                }
-            }
+            addToTime(intent, "INCREMENT", 10000)
         }
         else if("DECREMENT" == intent.action){
-            isTimerRunning = intent.getBooleanExtra("TIMER_RUNNING", false)
-            if(isTimerRunning){
-                pauseTimer(this);
-                val timeDec = intent.getLongExtra("DECREMENT", 10000)
-                currentTime -= timeDec
-                startTimer(this);
-            }else{
-                if(currentTime != MAX_TIME){
-                    currentTime = MAX_TIME
-                    val secondsRemaining = currentTime / 1000
-                    val timerText = "$secondsRemaining seconds"
-                    updateNotification(this, timerText, false)
-                }else{
-                    val timeDec = intent.getLongExtra("DECREMENT", 10000)
-                    newMaxTime -= timeDec
-                    val secondsRemaining = newMaxTime / 1000
-                    val timerText = "$secondsRemaining seconds"
-                    updateNotification(this, timerText, false)
-                }
-            }
+            addToTime(intent, "DECREMENT", -10000)
         }
         return super.onStartCommand(intent, flags, startId)
+    }
+
+    private fun addToTime(intent:Intent, intentString: String, valueToAdd:Long){
+        isTimerRunning = intent.getBooleanExtra("TIMER_RUNNING", false)
+        if(isTimerRunning){
+            pauseTimer(this);
+            val timeDec = intent.getLongExtra(intentString, valueToAdd)
+            currentTime += timeDec
+            startTimer(this);
+        }else{
+            if(currentTime != MAX_TIME){
+                currentTime = MAX_TIME
+                textNotification(currentTime, false)
+            }else{
+                val timeDec = intent.getLongExtra(intentString, valueToAdd)
+                newMaxTime += timeDec
+                textNotification(newMaxTime, isTimerRunning)
+            }
+        }
+    }
+
+    private fun textNotification(timeLong:Long, isTimerRunning:Boolean){
+//        var time = (timeLong * 0.001f).roundToLong()
+//        Log.v("kean", time.toString())
+        var time = TimeUnit.MILLISECONDS.toSeconds(timeLong)
+        var minutes = time/60
+        var seconds = time % 60
+        var minutesText:String = if(minutes < 10){
+            "0${minutes}"
+        } else{
+            "$minutes"
+        }
+        var secondsText:String = if(seconds < 10){
+            "0${seconds}"
+        }else{
+            "$seconds"
+        }
+        var timerText = "$minutesText:$secondsText"
+//        var timerText = "$timeLong"
+        updateNotification(this, timerText, isTimerRunning)
     }
 
     val randomNumber: Int
@@ -105,7 +114,7 @@ class MainService: Service() {
         Log.v("kean", "onBind()")
 
         createNotificationChannel()
-        updateNotification(this, "test", false)
+        textNotification(currentTime, false)
 
         return binder
     }
@@ -129,7 +138,7 @@ class MainService: Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = "test";
             val descriptionText = "description"
-            val importance = NotificationManager.IMPORTANCE_HIGH
+            val importance = NotificationManager.IMPORTANCE_DEFAULT
             val channel = NotificationChannel("12345", name, importance).apply {
                 description = descriptionText
                 setSound(null, null)
@@ -140,20 +149,17 @@ class MainService: Service() {
         }
     }
     private fun startTimer(context: Context) {
-        Log.v("kean", "startimer called once more")
+
         // Start the timer and update the notification text
-        countDownTimer = object : CountDownTimer(currentTime, 1000) {
+        countDownTimer = object : CountDownTimer(currentTime, 100) {
             override fun onTick(millisUntilFinished: Long) {
-                Log.v("kean", isTimerRunning.toString())
-                val secondsRemaining = millisUntilFinished / 1000
-                val timerText = "$secondsRemaining seconds"
-                updateNotification(context, timerText,true)
-                currentTime =millisUntilFinished
+                textNotification(millisUntilFinished, true)
+                currentTime = millisUntilFinished
             }
 
             override fun onFinish() {
                 // Timer finished, update the notification
-                updateNotification(context, "0 seconds", false)
+                updateNotification(context, "00:00", false)
                 currentTime = MAX_TIME
             }
         }.start()
@@ -165,9 +171,7 @@ class MainService: Service() {
             Log.v("kean", "hello")
             countDownTimer.cancel()
             isTimerRunning = false
-            val secondsRemaining = currentTime / 1000
-            val timerText = "$secondsRemaining seconds"
-            updateNotification(context, timerText, false)
+            textNotification(currentTime, false)
         }
     }
 
@@ -185,14 +189,17 @@ class MainService: Service() {
         }
         val decrementIntent = Intent(context, MainService::class.java).apply {
             action = "DECREMENT"
-            putExtra("DECREMENT", 10000.toLong())
+            putExtra("DECREMENT", (-10000).toLong())
             putExtra("TIMER_RUNNING", isTimerRunning)
         }
-
+        val quitIntent = Intent(context, MainService::class.java).apply {
+            action = "QUIT"
+        }
 
         val pendingIntent = PendingIntent.getService(context, 0, updateIntent, PendingIntent.FLAG_UPDATE_CURRENT)
         val incrementPendingIntent: PendingIntent = PendingIntent.getService(context, 0, incrementIntent, PendingIntent.FLAG_UPDATE_CURRENT)
         val decrementPendingIntent: PendingIntent = PendingIntent.getService(context, 0, decrementIntent, PendingIntent.FLAG_UPDATE_CURRENT)
+        val quitPendingIntent: PendingIntent = PendingIntent.getService(context, 0, quitIntent, PendingIntent.FLAG_MUTABLE)
 
         var buttonText:String
         if(isTimerRunning){
@@ -201,22 +208,23 @@ class MainService: Service() {
             buttonText = "Start"
         }
 
+        //layout inflatoer
+        val contentView = RemoteViews(packageName, R.layout.custom_notification)
+        contentView.setOnClickPendingIntent(R.id.startButton, pendingIntent)
+        contentView.setOnClickPendingIntent(R.id.incrementButton, incrementPendingIntent)
+        contentView.setOnClickPendingIntent(R.id.decrementButton, decrementPendingIntent)
+        contentView.setTextViewText(R.id.timerTextView, "$contentText")
+        contentView.setTextViewText(R.id.startButton, buttonText)
+
         // Increase the counter and update the notification
         val builder: NotificationCompat.Builder =
             NotificationCompat.Builder(context, "12345")
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .setContentTitle("My notification")
                 .setContentText("$contentText")
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                .addAction(
-                    androidx.core.R.drawable.notification_bg_normal, buttonText,
-                    pendingIntent)
-                .addAction(
-                    androidx.core.R.drawable.notification_bg_normal, "+",
-                    incrementPendingIntent)
-                .addAction(
-                    androidx.core.R.drawable.notification_bg_normal, "-",
-                    decrementPendingIntent)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setCustomContentView(contentView)
+                .setDeleteIntent(quitPendingIntent)
 
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
