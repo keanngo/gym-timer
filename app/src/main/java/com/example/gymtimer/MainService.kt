@@ -216,17 +216,22 @@ class MainService: Service() {
         contentView.setTextViewText(R.id.timerTextView, "$contentText")
         contentView.setTextViewText(R.id.startButton, buttonText)
 
+        val contentViewSmall = RemoteViews(packageName, R.layout.custom_notification_small)
+        contentViewSmall.setOnClickPendingIntent(R.id.startButton, pendingIntent)
+        contentViewSmall.setOnClickPendingIntent(R.id.incrementButton, incrementPendingIntent)
+        contentViewSmall.setOnClickPendingIntent(R.id.decrementButton, decrementPendingIntent)
+        contentViewSmall.setTextViewText(R.id.timerTextView, "$contentText")
+        contentViewSmall.setTextViewText(R.id.startButton, buttonText)
 
         // Increase the counter and update the notification
         val builder: NotificationCompat.Builder =
             NotificationCompat.Builder(context, "12345")
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
-                .setContentTitle("My notification")
-                .setContentText("$contentText")
+                .setStyle(NotificationCompat.DecoratedCustomViewStyle())
                 .setPriority(NotificationCompat.PRIORITY_LOW)
-                .setCustomContentView(contentView)
+                .setCustomContentView(contentViewSmall)
+                .setCustomBigContentView(contentView)
                 .setDeleteIntent(quitPendingIntent)
-                .setDefaults(NotificationCompat.DEFAULT_SOUND)
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(notificationId, builder.build());
