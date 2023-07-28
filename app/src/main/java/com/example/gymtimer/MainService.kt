@@ -33,14 +33,16 @@ class MainService: Service() {
     lateinit var countDownTimer: PreciseCountdown
     var currentTime: Long = MAX_TIME
     var newMaxTime: Long = MAX_TIME
-    private var isTimerRunning = false
+    var isTimerRunning = false
+    private var notificationId = 7337194
+    private val channelId = "testkean123"
 
     private var ringtone: Ringtone? = null
     private var isRingtonePlaying: Boolean = false
 
     private fun startRingtone(context: Context) {
         if (!isRingtonePlaying) {
-            val ringtoneUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+            val ringtoneUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
             ringtone = RingtoneManager.getRingtone(context.applicationContext, ringtoneUri)
             ringtone?.play()
             isRingtonePlaying = true
@@ -53,6 +55,7 @@ class MainService: Service() {
         }
     }
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
+        Log.v("kean", "onStartCommand")
         if(isRingtonePlaying){
             stopRingtone()
             isRingtonePlaying = false
@@ -123,24 +126,29 @@ class MainService: Service() {
         var timerText = "$minutesText:$secondsText"
         updateNotification(this, timerText, isTimerRunning)
     }
-
-    val randomNumber: Int
-        get() = mGenerator.nextInt(100)
-
-    override fun onBind(p0: Intent?): IBinder? {
+    override fun onBind(intent: Intent): IBinder? {
         Log.v("kean", "onBind()")
 
+        currentTime = intent.getLongExtra("currentTime", 0)
+        isTimerRunning = intent.getBooleanExtra("isTimerRunning", false)
+
         createNotificationChannel()
-        textNotification(currentTime, false)
+        if(isTimerRunning){
+            startTimer(this)
+        }else{
+            textNotification(currentTime, false)
+        }
 
         return binder
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
         Log.v("kean", "onUnbind()")
+//        pauseTimer(this)
         val notificationManager =
             applicationContext.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.cancel(0)
+        notificationManager.cancel(notificationId)
+
         return super.onUnbind(intent)
     }
 
@@ -152,6 +160,7 @@ class MainService: Service() {
 
         countDownTimer = object:PreciseCountdown(currentTime, 1000){
             override fun onTick(timeLeft: Long) {
+                isTimerRunning = true
                 textNotification(timeLeft, true)
                 currentTime = timeLeft
             }
@@ -181,7 +190,6 @@ class MainService: Service() {
     }
 
     private fun updateNotification(context:Context, contentText:String, isTimerRunning:Boolean){
-        val notificationId = 0
         // Increase the counter and update the notification
         val updateIntent = Intent(context, MainService::class.java).apply{
             action = "START"
@@ -225,7 +233,7 @@ class MainService: Service() {
 
         // Increase the counter and update the notification
         val builder: NotificationCompat.Builder =
-            NotificationCompat.Builder(context, "12345")
+            NotificationCompat.Builder(context, channelId)
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .setStyle(NotificationCompat.DecoratedCustomViewStyle())
                 .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -244,9 +252,9 @@ class MainService: Service() {
             val name = "test";
             val descriptionText = "description"
             val importance = NotificationManager.IMPORTANCE_DEFAULT
-            val channel = NotificationChannel("12345", name, importance).apply {
+            val channel = NotificationChannel(channelId, name, importance).apply {
                 description = descriptionText
-//                setSound(null, null)
+                setSound(null, null)
             }
             // Register the channel with the system
             val notificationManager: NotificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
