@@ -14,6 +14,7 @@ import android.os.IBinder
 import android.util.Log
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
+import kotlinx.coroutines.NonCancellable.start
 import java.util.Random
 import java.util.concurrent.TimeUnit
 
@@ -61,10 +62,8 @@ class MainService: Service() {
         }
         if("QUIT" == intent.action){
             Log.v("kean", "This was hit")
-            pauseTimer(this)
-            val notificationManager =
-                applicationContext.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.cancel(notificationId)
+            pauseTimer()
+            clearNotification()
             stopSelf()
         }
 
@@ -80,7 +79,7 @@ class MainService: Service() {
                 startTimer(this);
             }//if we get an intent while the timer is running, stop it
             else {
-                pauseTimer(this);
+                pauseTimer();
             }
 
         }
@@ -96,7 +95,7 @@ class MainService: Service() {
     private fun addToTime(intent:Intent, intentString: String, valueToAdd:Long){
         isTimerRunning = intent.getBooleanExtra("TIMER_RUNNING", false)
         if(isTimerRunning){
-            pauseTimer(this);
+            pauseTimer();
             val timeDec = intent.getLongExtra(intentString, valueToAdd)
             currentTime += timeDec
             startTimer(this);
@@ -130,18 +129,25 @@ class MainService: Service() {
         updateNotification(this, timerText, isTimerRunning)
     }
     override fun onBind(intent: Intent): IBinder? {
-        Log.v("kean", "onBind()")
-        currentTime = intent.getLongExtra("currentTime", 0)
+//        Log.v("kean", "onBind()")
+//        currentTime = intent.getLongExtra("currentTime", 0)
 //        isTimerRunning = intent.getBooleanExtra("TIMER_RUNNING", false)
-        start(currentTime, isTimerRunning)
+//        startRun(currentTime, isTimerRunning)
 
         return binder
     }
 
-    public fun start(currentTime: Long?, isTimerRunning: Boolean?){
+    public fun startRun(currentTimeAct: Long?, isTimerRunningAct: Boolean?){
+        Log.v("kean", "startRun")
+        if (currentTimeAct != null) {
+            currentTime = currentTimeAct
+        }
+        if (isTimerRunningAct != null) {
+            isTimerRunning = isTimerRunningAct
+        }
 
         createNotificationChannel()
-        if(isTimerRunning == true){
+        if(isTimerRunning){
             startTimer(this)
         }else{
             if (currentTime != null) {
@@ -151,12 +157,16 @@ class MainService: Service() {
 
     }
 
-    override fun onUnbind(intent: Intent?): Boolean {
-        Log.v("kean", "onUnbind()")
-        pauseTimer(this)
+    public fun clearNotification(){
         val notificationManager =
             applicationContext.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancel(notificationId)
+    }
+
+    override fun onUnbind(intent: Intent?): Boolean {
+        Log.v("kean", "onUnbind()")
+        pauseTimer()
+        clearNotification()
 
         return super.onUnbind(intent)
     }
@@ -189,7 +199,7 @@ class MainService: Service() {
 
     }
 
-    private fun pauseTimer(context: Context) {
+    public fun pauseTimer() {
         Log.v("kean","pause timer pressed")
         if (::countDownTimer.isInitialized) {
             Log.v("kean", "hello")

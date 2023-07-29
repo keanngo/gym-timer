@@ -92,7 +92,7 @@ class MainActivity : ComponentActivity() {
             val binder = service as MainService.MainBinder
             mService = binder.getService()
             mBound = true
-            mService.start(viewModel.getCurrentTime().value, viewModel.getTimerRunning().value)
+            mService.startRun(viewModel.getCurrentTime().value, viewModel.getTimerRunning().value)
         }
 
         override fun onServiceDisconnected(p0: ComponentName) {
@@ -132,6 +132,8 @@ class MainActivity : ComponentActivity() {
         if (mBound) {
             viewModel.setTimerRunning(mService.isTimerRunning)
             viewModel.setCurrentTime(mService.currentTime)
+            mService.pauseTimer()
+            mService.clearNotification()
             unbindService(connection)
             mBound = false
         }
