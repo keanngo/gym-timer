@@ -132,7 +132,7 @@ class MainService: Service() {
     override fun onBind(intent: Intent): IBinder? {
         Log.v("kean", "onBind()")
         currentTime = intent.getLongExtra("currentTime", 0)
-        isTimerRunning = intent.getBooleanExtra("isTimerRunning", false)
+//        isTimerRunning = intent.getBooleanExtra("TIMER_RUNNING", false)
         start(currentTime, isTimerRunning)
 
         return binder
@@ -153,7 +153,7 @@ class MainService: Service() {
 
     override fun onUnbind(intent: Intent?): Boolean {
         Log.v("kean", "onUnbind()")
-//        pauseTimer(this)
+        pauseTimer(this)
         val notificationManager =
             applicationContext.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancel(notificationId)
@@ -166,6 +166,7 @@ class MainService: Service() {
         super.onRebind(intent)
     }
     private fun startTimer(context: Context) {
+        Log.v("kean", "StartTimer")
 
         countDownTimer = object:PreciseCountdown(currentTime, 1000){
             override fun onTick(timeLeft: Long) {
@@ -190,7 +191,7 @@ class MainService: Service() {
 
     private fun pauseTimer(context: Context) {
         Log.v("kean","pause timer pressed")
-        if (countDownTimer != null) {
+        if (::countDownTimer.isInitialized) {
             Log.v("kean", "hello")
             countDownTimer.stop()
             isTimerRunning = false

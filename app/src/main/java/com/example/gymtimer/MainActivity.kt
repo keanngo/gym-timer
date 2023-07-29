@@ -11,6 +11,7 @@ import android.os.IBinder
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +22,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
@@ -45,6 +47,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.viewModelFactory
 import kotlinx.coroutines.delay
 import java.lang.Math.PI
 
@@ -53,28 +57,33 @@ class MainActivity : ComponentActivity() {
     private lateinit var mService: MainService
     private var mBound: Boolean = false
 
-//    class MyViewModel : ViewModel() {
-//        private val isTimerRunning = MutableLiveData(false)
-//        private val currentTime = MutableLiveData<Long>(20000)
-//        fun getTimerRunning(): LiveData<Boolean> {
-//            return isTimerRunning
-//        }
-//        fun getCurrentTime(): LiveData<Long>{
-//            return currentTime
-//        }
-//
-//        fun setTimerRunning(value: Boolean) {
-//            isTimerRunning.postValue(value)
-//        }
-//
-//        fun setCurrentTime(value: Long){
-//            currentTime.postValue(value)
-//        }
-//    }
+    class MyViewModel : ViewModel() {
+        private val isTimerRunning = MutableLiveData(false)
+        private val currentTime = MutableLiveData<Long>(200000)
+        fun getTimerRunning(): LiveData<Boolean> {
+            return isTimerRunning
+        }
+        fun getCurrentTime(): LiveData<Long>{
+            return currentTime
+        }
+
+        fun setTimerRunning(value: Boolean) {
+
+            isTimerRunning.postValue(value)
+        }
+
+        fun setCurrentTime(value: Long){
+//            Log.v("kean", value.toString())
+            currentTime.postValue(value)
+        }
+    }
+
+    var viewModel = MyViewModel()
+//        val viewModel = ViewModelProvider(this).get(MainActivity.MyViewModel::class.java)
 
 
-    var isTimerRunning =  MutableLiveData(false)
-    var currentTimeLive = MutableLiveData<Long>(20000)
+//    var isTimerRunning =  MutableLiveData(false)
+//    var currentTimeLive = MutableLiveData<Long>(20000)
 
     //define callbacks for service binding, passed to bindService()
     private val connection = object : ServiceConnection {
@@ -83,7 +92,7 @@ class MainActivity : ComponentActivity() {
             val binder = service as MainService.MainBinder
             mService = binder.getService()
             mBound = true
-            mService.start(currentTimeLive.value, isTimerRunning.value)
+            mService.start(viewModel.getCurrentTime().value, viewModel.getTimerRunning().value)
         }
 
         override fun onServiceDisconnected(p0: ComponentName) {
@@ -97,33 +106,32 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-//            Test2(currentTimeLive, isTimerRunning)
+            Test2(viewModel)
 
-            Surface (
-                color = Color(0xFF101010),
-                modifier = Modifier.fillMaxSize()
-                    ){
-                Box(
-                    contentAlignment = Alignment.Center
-                ){
-                    Timer(
-                        totalTime = currentTimeLive,
-                        isTimerRunning = isTimerRunning,
-                        handleColour = Color.Green,
-                        inactiveBarColor = Color.DarkGray,
-                        activeBarColor = Color(0xFF37B900),
-                        modifier = Modifier.size(200.dp)
-                    )
-                }
-            }
+//            Surface (
+//                color = Color(0xFF101010),
+//                modifier = Modifier.fillMaxSize()
+//                    ){
+//                Box(
+//                    contentAlignment = Alignment.Center
+//                ){
+//                    Timer(
+//                        viewModel = viewModel,
+//                        handleColour = Color.Green,
+//                        inactiveBarColor = Color.DarkGray,
+//                        activeBarColor = Color(0xFF37B900),
+//                        modifier = Modifier.size(200.dp)
+//                    )
+//                }
+//            }
         }
     }
 
     override fun onStart() {
         super.onStart()
         if (mBound) {
-            isTimerRunning.postValue(mService.isTimerRunning)
-            currentTimeLive.postValue(mService.currentTime)
+            viewModel.setTimerRunning(mService.isTimerRunning)
+            viewModel.setCurrentTime(mService.currentTime)
             unbindService(connection)
             mBound = false
         }
@@ -142,8 +150,8 @@ class MainActivity : ComponentActivity() {
         Log.v("kean", "onStop()")
         var serviceIntent = Intent(this, MainService::class.java)
         serviceIntent.action = "START"
-        serviceIntent.putExtra("isTimerRunning", isTimerRunning.value)
-        serviceIntent.putExtra("currentTime", currentTimeLive.value)
+        serviceIntent.putExtra("TIMER_RUNNING", viewModel.getTimerRunning().value)
+        serviceIntent.putExtra("currentTime", viewModel.getCurrentTime().value)
         bindService(serviceIntent, connection, Context.BIND_AUTO_CREATE)
 
         super.onStop()
@@ -157,24 +165,39 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun Test2(
-    time: LiveData<Long>,
-    isTimerRunning: LiveData<Boolean>) {
-    val test: Long? by time.observeAsState()
-    val test2: Boolean? by isTimerRunning.observeAsState()
+    viewModel: MainActivity.MyViewModel, ) {
+
+    val currentTime: Long? by viewModel.getCurrentTime().observeAsState(10L)
+    val isTimerRunning: Boolean? by viewModel.getTimerRunning().observeAsState(false)
+
+    //whenever the key changes, rerun the code
+    LaunchedEffect(key1 = currentTime, key2 = isTimerRunning){
+        if(currentTime!! > 0 && isTimerRunning == true) {
+            delay(100L)
+            val value = (currentTime!! - 100L)
+            viewModel.setCurrentTime(value)
+        }
+    }
+
     Column() {
         Text(
-            text = test.toString()
+            text = isTimerRunning.toString()
         )
         Text(
-            text = test2.toString()
+            text=(currentTime?.div(1000L)).toString(),
+            fontSize = 44.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black
         )
+        Button(onClick = { viewModel.setTimerRunning(!isTimerRunning!!)}) {
+            Text("Click me")
+        }
     }
 }
 
 @Composable
 fun Timer(
-    totalTime: LiveData<Long>,
-    isTimerRunning: LiveData<Boolean>,
+    viewModel: MainActivity.MyViewModel,
     handleColour: Color,
     inactiveBarColor: Color,
     activeBarColor: Color,
@@ -188,13 +211,14 @@ fun Timer(
     var value by remember {
         mutableStateOf(initialValue)
     }
-    val time: Long? by totalTime.observeAsState()
+
+    val time: Long? by viewModel.getCurrentTime().observeAsState()
 
     var currentTime by remember{
         mutableStateOf(time)
     }
 
-    val isTimerRunning by isTimerRunning.observeAsState()
+    val isTimerRunning by viewModel.getTimerRunning().observeAsState()
     var timerRunning by remember{
         mutableStateOf(isTimerRunning)
     }
@@ -204,7 +228,7 @@ fun Timer(
         if(currentTime!! > 0 && timerRunning == true) {
             delay(100L)
             currentTime = currentTime!! - 100L
-            value = currentTime!! / (totalTime.value)?.toFloat()!!
+            value = currentTime!! / 180F
         }
     }
     Box(
@@ -254,7 +278,7 @@ fun Timer(
         Button(
             onClick = {
                       if(currentTime!! <= 0L){
-                          currentTime = totalTime.value
+                          currentTime = 180
                           timerRunning = true
                       } else {
                           timerRunning = !timerRunning!!
