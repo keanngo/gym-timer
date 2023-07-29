@@ -28,7 +28,6 @@ class MainService: Service() {
         fun getService(): MainService = this@MainService
     }
 
-    private val mGenerator = Random()
     var MAX_TIME: Long = 180000
     lateinit var countDownTimer: PreciseCountdown
     var currentTime: Long = MAX_TIME
@@ -62,6 +61,10 @@ class MainService: Service() {
         }
         if("QUIT" == intent.action){
             Log.v("kean", "This was hit")
+            pauseTimer(this)
+            val notificationManager =
+                applicationContext.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.cancel(notificationId)
             stopSelf()
         }
 
@@ -128,18 +131,24 @@ class MainService: Service() {
     }
     override fun onBind(intent: Intent): IBinder? {
         Log.v("kean", "onBind()")
-
         currentTime = intent.getLongExtra("currentTime", 0)
         isTimerRunning = intent.getBooleanExtra("isTimerRunning", false)
-
-        createNotificationChannel()
-        if(isTimerRunning){
-            startTimer(this)
-        }else{
-            textNotification(currentTime, false)
-        }
+        start(currentTime, isTimerRunning)
 
         return binder
+    }
+
+    public fun start(currentTime: Long?, isTimerRunning: Boolean?){
+
+        createNotificationChannel()
+        if(isTimerRunning == true){
+            startTimer(this)
+        }else{
+            if (currentTime != null) {
+                textNotification(currentTime, false)
+            }
+        }
+
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
