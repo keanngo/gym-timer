@@ -12,9 +12,14 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.snapping.SnapFlingBehavior
+import androidx.compose.foundation.gestures.snapping.SnapLayoutInfoProvider
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -111,7 +116,7 @@ class MainActivity : ComponentActivity() {
         if (mBound) {
             viewModel.setTimerRunning(mService.isTimerRunning)
             viewModel.setCurrentTime(mService.currentTime)
-            viewModel.setInsideApp(1)
+            viewModel.setInsideApp(0)
             mService.pauseTimer()
             mService.clearNotification()
             unbindService(connection)
@@ -207,35 +212,11 @@ fun Test2(
             }
 
             Row(verticalAlignment = Alignment.CenterVertically){
-
-                Button(onClick = { viewModel.getCurrentTime().value?.let { viewModel.setCurrentTime(it - 30000) } }){
-                    Text(text = "-")
-                }
                 Button(onClick = { viewModel.setTimerRunning(!isTimerRunning!!)}) {
                     Text(text = if (isTimerRunning == true && currentTime!! > 0L) "Stop" else if (isTimerRunning == false && currentTime!! > 0L) "Start" else "Restart")
                 }
-                Button(onClick = { viewModel.getCurrentTime().value?.let { viewModel.setCurrentTime(it + 30000) } }){
-                    Text(text = "+")
-                }
             }
         }
-//        Row(verticalAlignment = Alignment.CenterVertically) {
-//            LazyColumn() {
-//                items(
-//                    61,
-//                    ) { index ->
-//                    Text(text = if (index < 10) "0$index" else "$index",
-//                            fontSize = 44.sp,)
-//                }
-//            }
-//            Text(":", fontSize = 44.sp)
-//            LazyColumn() {
-//                items(61) { index ->
-//                    Text(text = if (index < 10) "0$index" else "$index",
-//                        fontSize = 44.sp,)
-//                }
-//            }
-//        }
 
 
 
@@ -243,6 +224,7 @@ fun Test2(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun LimitedLazyColumn(items : List<Int>, limit : Int, timeUnit: String, viewModel: MyViewModel) {
     val itemHeightPixels = remember { mutableStateOf(0) }
@@ -254,43 +236,54 @@ fun LimitedLazyColumn(items : List<Int>, limit : Int, timeUnit: String, viewMode
     var currentSec: Long
     var firstVisibleIndex by remember { mutableStateOf(-2) }
 
-    val currentTime: Long? by viewModel.getCurrentTime().observeAsState(10L)
+    val currentTime: Long? by viewModel.getCurrentTime().observeAsState()
     val isTimerRunning: Boolean? by viewModel.getTimerRunning().observeAsState(false)
     val insideApp: Int? by viewModel.getInsideApp().observeAsState()
-
-//    //whenever the key changes, rerun the code
-//    LaunchedEffect(key1 = currentTime, key2 = isTimerRunning){
-//        if(currentTime!! > 0 && isTimerRunning == true) {
-//            delay(100L)
-//            val value = (currentTime!! - 100L)
-//            viewModel.setCurrentTime(value)
-//        }
-//    }
 
     LaunchedEffect(key1 = insideApp) {
         Log.v("kean", "the value has changed!!")
         if(currentTime != null && listState.layoutInfo.totalItemsCount != 0){
             currentMin = TimeUnit.MILLISECONDS.toSeconds(currentTime!!) / 60
-            currentSec = TimeUnit.MILLISECONDS.toSeconds(currentTime!!)
+            currentSec = TimeUnit.MILLISECONDS.toSeconds(currentTime!!) % 60
+            if (timeUnit == "m"){
+                firstVisibleIndex = currentMin.toInt()
+            }else{
+                firstVisibleIndex = currentSec.toInt()
+                Log.v("kean", "here: "+firstVisibleIndex)
+            }
+
+            viewModel.setInsideApp(1)
+        }
+        listState.scrollToItem(firstVisibleIndex)
+    }
+    LaunchedEffect(key1 = currentTime){
+        delay(100)
+        if(currentTime != null && listState.layoutInfo.totalItemsCount != 0){
+            currentMin = TimeUnit.MILLISECONDS.toSeconds(currentTime!!) / 60
+            currentSec = TimeUnit.MILLISECONDS.toSeconds(currentTime!!) % 60
             if (timeUnit == "m"){
                 firstVisibleIndex = currentMin.toInt()
             }else{
                 firstVisibleIndex = currentSec.toInt()
             }
-            Log.v("kean", "here: "+firstVisibleIndex.toString())
-            viewModel.setInsideApp(3)
         }
-        listState.scrollToItem(firstVisibleIndex)
+        listState.animateScrollToItem(firstVisibleIndex)
+
     }
 
+//    // If you'd like to customize either the snap behavior or the layout provider
+//    val snappingLayout = remember(listState) { SnapLayoutInfoProvider(listState) }
+//    val flingBehavior = rememberSnapFlingBehavior(snappingLayout)
 
     LazyColumn(
         state=listState,
-        modifier = Modifier.height(pixelsToDp(pixels = itemHeightPixels.value * limit))
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        modifier = Modifier.height(pixelsToDp(pixels = itemHeightPixels.value * limit)),
+//        flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
     ) {
         if (listState.layoutInfo.totalItemsCount != 0) {
             val centreItem = listState.layoutInfo.visibleItemsInfo.first().index
-            if (unit.value != centreItem){
+            if (unit.value != centreItem && insideApp == 1 ){
                 if(timeUnit == "m"){
                     val currentTime = viewModel.getCurrentTime().value
                     if(currentTime != null){
@@ -298,13 +291,14 @@ fun LimitedLazyColumn(items : List<Int>, limit : Int, timeUnit: String, viewMode
                         if (centreItem != oldMinutes.toInt()) {
                             val new = currentTime + (centreItem - oldMinutes) * 60 * 1000
                             viewModel.setCurrentTime(new)
+                            Log.v("kean", "i am called without pressing anything")
                         }
                     }
 
                 }else{
                     val currentTime = viewModel.getCurrentTime().value
                     if(currentTime != null){
-                        var oldSeconds = TimeUnit.MILLISECONDS.toSeconds(currentTime)
+                        var oldSeconds = TimeUnit.MILLISECONDS.toSeconds(currentTime) % 60
                         if (centreItem != oldSeconds.toInt()) {
                             val new = currentTime + (centreItem - oldSeconds) *1000
                             viewModel.setCurrentTime(new)
@@ -334,106 +328,3 @@ fun LimitedLazyColumn(items : List<Int>, limit : Int, timeUnit: String, viewMode
 
 @Composable
 private fun pixelsToDp(pixels: Int) = with(LocalDensity.current) { pixels.toDp() }
-
-@Composable
-fun Timer(
-    viewModel: MyViewModel,
-    handleColour: Color,
-    inactiveBarColor: Color,
-    activeBarColor: Color,
-    modifier: Modifier = Modifier,
-    initialValue: Float = 1f,
-    strokeWidth: Dp = 5.dp
-){
-    var size by remember {
-        mutableStateOf(IntSize.Zero)
-    }
-    var value by remember {
-        mutableStateOf(initialValue)
-    }
-
-    val time: Long? by viewModel.getCurrentTime().observeAsState()
-
-    var currentTime by remember{
-        mutableStateOf(time)
-    }
-
-    val isTimerRunning by viewModel.getTimerRunning().observeAsState()
-    var timerRunning by remember{
-        mutableStateOf(isTimerRunning)
-    }
-
-    //whenever the key changes, rerun the code
-    LaunchedEffect(key1 = currentTime, key2 = isTimerRunning){
-        if(currentTime!! > 0 && timerRunning == true) {
-            delay(100L)
-            currentTime = currentTime!! - 100L
-            value = currentTime!! / 180F
-        }
-    }
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier.onSizeChanged {
-            size = it
-        }
-    ){
-        Canvas(modifier = modifier){
-            drawArc(
-                color = inactiveBarColor,
-                startAngle = -215f,
-                sweepAngle = 250f,
-                useCenter = false,
-                size = Size(size.width.toFloat(), size.height.toFloat()),
-                style = Stroke(strokeWidth.toPx(), cap = StrokeCap.Round)
-
-            )
-            drawArc(
-                color = activeBarColor,
-                startAngle = -215f,
-                sweepAngle = 250f * value,
-                useCenter = false,
-                size = Size(size.width.toFloat(), size.height.toFloat()),
-                style = Stroke(strokeWidth.toPx(), cap = StrokeCap.Round)
-
-            )
-            val center = Offset(size.width / 2f, size.height / 2f)
-            val beta = (250f * value + 145f) * (PI / 180f).toFloat()
-            val r = size.width / 2f
-            val a = kotlin.math.cos(beta) * r
-            val b = kotlin.math.sin(beta) * r
-            drawPoints(
-                listOf(Offset(center.x + a, center.y + b)),
-                pointMode = PointMode.Points,
-                color = handleColour,
-                strokeWidth = (strokeWidth*3f).toPx(),
-                cap = StrokeCap.Round
-            )
-        }
-        Text(
-            text=(currentTime?.div(1000L)).toString(),
-            fontSize = 44.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.White
-        )
-        Button(
-            onClick = {
-                      if(currentTime!! <= 0L){
-                          currentTime = 180
-                          timerRunning = true
-                      } else {
-                          timerRunning = !timerRunning!!
-                      }
-            },
-            modifier = Modifier.align(Alignment.BottomCenter),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if(!timerRunning!! || currentTime!! <= 0L){
-                    Color.Green
-                } else {
-                    Color.Red
-                }
-            )
-        ) {
-            Text(text = if (timerRunning!! && currentTime!! > 0L) "Stop" else if (timerRunning!! && currentTime!! > 0L) "Start" else "Restart")
-        }
-    }
-}
