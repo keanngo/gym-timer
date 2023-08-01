@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -159,30 +160,8 @@ fun Test2(
     val currentTime: Long? by viewModel.getCurrentTime().observeAsState(10L)
     val isTimerRunning: Boolean? by viewModel.getTimerRunning().observeAsState(false)
 
-//    //whenever the key changes, rerun the code
-//    LaunchedEffect(key1 = currentTime, key2 = isTimerRunning){
-//        if(currentTime!! > 0 && isTimerRunning == true) {
-//            delay(100L)
-//            val value = (currentTime!! - 100L)
-//            viewModel.setCurrentTime(value)
-//        }
-//    }
-
     Column() {
-//        var time = currentTime?.let { TimeUnit.MILLISECONDS.toSeconds(it) }
-//        var minutes = time?.div(60)
-//        var seconds = time?.rem(60)
-//        var minutesText:String = if(minutes!! < 10){
-//            "0${minutes}"
-//        } else{
-//            "$minutes"
-//        }
-//        var secondsText:String = if(seconds!! < 10){
-//            "0${seconds}"
-//        }else{
-//            "$seconds"
-//        }
-//        var timerText = "$minutesText:$secondsText"
+
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ){
@@ -190,25 +169,19 @@ fun Test2(
                 modifier = Modifier.background(Color.Green),
                 contentAlignment = Alignment.Center
             ){
-                Row(verticalAlignment = Alignment.CenterVertically){
-                    LimitedLazyColumn(items = (-2..61).toList(), limit = 5, timeUnit="m", viewModel)
-                    Text(":", fontSize = 46.sp)
-                    LimitedLazyColumn(items = (-2..61).toList(), limit = 5, timeUnit="s", viewModel)
+                if(isTimerRunning == true){
+                    Log.v("kean", "currentTime start RT: $currentTime")
+                    RunningTimer(viewModel = viewModel)
+                }else{
+                    Log.v("kean", "currentTime start LLC: $currentTime")
+                    Row(verticalAlignment = Alignment.CenterVertically){
+                        LimitedLazyColumn(items = (-2..61).toList(), limit = 5, timeUnit="m", viewModel)
+                        Text(":", fontSize = 46.sp)
+                        LimitedLazyColumn(items = (-2..61).toList(), limit = 5, timeUnit="s", viewModel)
+                    }
                 }
-//                Text(
-//                    modifier = Modifier
-//                        .padding(16.dp)
-//                        .drawBehind {
-//                            drawCircle(
-//                                color = Color.Red,
-//                                radius = this.size.maxDimension
-//                            )
-//                        },
-//                    text=timerText,
-//                    fontSize = 44.sp,
-//                    fontWeight = FontWeight.Bold,
-//                    color = Color.White,
-//                    textAlign = TextAlign.Center, )
+
+
             }
 
             Row(verticalAlignment = Alignment.CenterVertically){
@@ -222,6 +195,51 @@ fun Test2(
 
 
     }
+}
+
+@Composable
+fun RunningTimer(viewModel: MyViewModel){
+
+    val currentTime: Long? by viewModel.getCurrentTime().observeAsState(10L)
+    val isTimerRunning: Boolean? by viewModel.getTimerRunning().observeAsState(false)
+    
+    //whenever the key changes, rerun the code
+    LaunchedEffect(key1 = currentTime, key2 = isTimerRunning){
+        if(currentTime!! > 0 && isTimerRunning == true) {
+            delay(100L)
+            val value = (currentTime!! - 100L)
+            viewModel.setCurrentTime(value)
+        }
+    }
+    var time = currentTime?.let { TimeUnit.MILLISECONDS.toSeconds(it) }
+    var minutes = time?.div(60)
+    var seconds = time?.rem(60)
+    var minutesText:String = if(minutes!! < 10){
+        "0${minutes}"
+    } else{
+        "$minutes"
+    }
+    var secondsText:String = if(seconds!! < 10){
+        "0${seconds}"
+    }else{
+        "$seconds"
+    }
+    var timerText = "$minutesText:$secondsText"
+    Text(
+        modifier = Modifier
+            .padding(16.dp)
+            .drawBehind {
+                drawCircle(
+                    color = Color.Red,
+                    radius = this.size.maxDimension
+                )
+            },
+        text=timerText,
+        fontSize = 44.sp,
+        fontWeight = FontWeight.Bold,
+        color = Color.White,
+        textAlign = TextAlign.Center,
+    )
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -240,6 +258,7 @@ fun LimitedLazyColumn(items : List<Int>, limit : Int, timeUnit: String, viewMode
     val isTimerRunning: Boolean? by viewModel.getTimerRunning().observeAsState(false)
     val insideApp: Int? by viewModel.getInsideApp().observeAsState()
 
+    // when reopening app, go to the current time
     LaunchedEffect(key1 = insideApp) {
         Log.v("kean", "the value has changed!!")
         if(currentTime != null && listState.layoutInfo.totalItemsCount != 0){
@@ -249,31 +268,13 @@ fun LimitedLazyColumn(items : List<Int>, limit : Int, timeUnit: String, viewMode
                 firstVisibleIndex = currentMin.toInt()
             }else{
                 firstVisibleIndex = currentSec.toInt()
-                Log.v("kean", "here: "+firstVisibleIndex)
             }
 
             viewModel.setInsideApp(1)
+            listState.scrollToItem(firstVisibleIndex)
         }
-        listState.scrollToItem(firstVisibleIndex)
-    }
-    LaunchedEffect(key1 = currentTime){
-        delay(100)
-        if(currentTime != null && listState.layoutInfo.totalItemsCount != 0){
-            currentMin = TimeUnit.MILLISECONDS.toSeconds(currentTime!!) / 60
-            currentSec = TimeUnit.MILLISECONDS.toSeconds(currentTime!!) % 60
-            if (timeUnit == "m"){
-                firstVisibleIndex = currentMin.toInt()
-            }else{
-                firstVisibleIndex = currentSec.toInt()
-            }
-        }
-        listState.animateScrollToItem(firstVisibleIndex)
 
     }
-
-//    // If you'd like to customize either the snap behavior or the layout provider
-//    val snappingLayout = remember(listState) { SnapLayoutInfoProvider(listState) }
-//    val flingBehavior = rememberSnapFlingBehavior(snappingLayout)
 
     LazyColumn(
         state=listState,
@@ -284,28 +285,50 @@ fun LimitedLazyColumn(items : List<Int>, limit : Int, timeUnit: String, viewMode
         if (listState.layoutInfo.totalItemsCount != 0) {
             val centreItem = listState.layoutInfo.visibleItemsInfo.first().index
             if (unit.value != centreItem && insideApp == 1 ){
+                Log.v("kean", "unit: ${unit.value} centreItem: $centreItem")
                 if(timeUnit == "m"){
                     val currentTime = viewModel.getCurrentTime().value
                     if(currentTime != null){
                         var oldMinutes = TimeUnit.MILLISECONDS.toSeconds(currentTime) / 60
-                        if (centreItem != oldMinutes.toInt()) {
-                            val new = currentTime + (centreItem - oldMinutes) * 60 * 1000
-                            viewModel.setCurrentTime(new)
-                            Log.v("kean", "i am called without pressing anything")
+                        //scrolling down, increment
+                        if(centreItem > oldMinutes){
+                            viewModel.setCurrentTime(currentTime + 60000)
+                        }else{
+                            viewModel.setCurrentTime(currentTime - 60000)
                         }
                     }
+
+//                    if(currentTime != null){
+//                        var oldMinutes = TimeUnit.MILLISECONDS.toSeconds(currentTime) / 60
+//                        if (centreItem != oldMinutes.toInt()) {
+//                            val new = currentTime + (centreItem - oldMinutes) * 60 * 1000
+//                            viewModel.setCurrentTime(new)
+//                            Log.v("kean", "mins:"+new/60+ " secs:"+new%60)
+//                        }
+//                    }
 
                 }else{
                     val currentTime = viewModel.getCurrentTime().value
                     if(currentTime != null){
                         var oldSeconds = TimeUnit.MILLISECONDS.toSeconds(currentTime) % 60
-                        if (centreItem != oldSeconds.toInt()) {
-                            val new = currentTime + (centreItem - oldSeconds) *1000
-                            viewModel.setCurrentTime(new)
+                        if(centreItem > oldSeconds){
+                            viewModel.setCurrentTime(currentTime + 1000)
+                        }else{
+                            viewModel.setCurrentTime(currentTime - 1000)
                         }
                     }
+
+//                    if(currentTime != null){
+//                        var oldSeconds = TimeUnit.MILLISECONDS.toSeconds(currentTime) % 60
+//                        if (centreItem != oldSeconds.toInt()) {
+//                            val new = currentTime + (centreItem - oldSeconds) *1000
+//                            viewModel.setCurrentTime(new)
+//                            Log.v("kean", "mins:"+new/60+ " secs:"+new%60)
+//                        }
+//                    }
                 }
                 unit.value = centreItem
+                Log.v("kean", "currentTime2: $currentTime")
             }
 
         }

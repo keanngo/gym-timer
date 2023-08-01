@@ -30,7 +30,6 @@ class MyViewModel : ViewModel() {
     }
 
     fun setInsideApp(value: Int){
-        Log.v("kean", "setInsideApp(): "+value)
         insideApp.postValue(value)
     }
 
