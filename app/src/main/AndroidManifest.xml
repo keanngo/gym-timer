@@ -15,12 +15,14 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.GymTimer"
         tools:targetApi="33">
-<!--        <service-->
-<!--            android:name=".ForegroundService"-->
-<!--            android:enabled="true"-->
-<!--            android:exported="false"-->
-<!--            android:foregroundServiceType="dataSync"-->
-<!--            />-->
+        <receiver
+            android:name=".MyBroadcastReceiver" />
+        <service
+            android:name=".MainService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync"
+            />
         <activity
             android:name=".MainActivity"
             android:exported="true"

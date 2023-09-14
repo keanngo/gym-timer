@@ -1,52 +1,40 @@
 package com.example.gymtimer
 
-import android.os.Bundle
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
+import android.os.IBinder
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.example.gymtimer.ui.theme.GymTimerTheme
+import kotlin.system.exitProcess
+
 
 class MainActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    private lateinit var mService: MainService
+    private var mBound: Boolean = false
 
-        setContent {
-            GymTimerTheme {
-                // A surface container using the 'background' color from the theme
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    Greeting("Android")
-                }
-            }
+    //define callbacks for service binding, passed to bindService()
+    private val connection = object : ServiceConnection {
+        override fun onServiceConnected(className: ComponentName, service: IBinder) {
+            val binder = service as MainService.MainBinder
+            mService = binder.getService()
+            mBound = true
+            mService.startRun()
+            finish()
+            exitProcess(0)
+
         }
+
+        override fun onServiceDisconnected(p0: ComponentName) {
+            mBound = false
+        }
+
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-    }
-
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    GymTimerTheme {
-        Greeting("Android")
+    override fun onStart() {
+        super.onStart()
+        val serviceIntent = Intent(this, MainService::class.java)
+        serviceIntent.action = "START"
+        bindService(serviceIntent, connection, Context.BIND_AUTO_CREATE)
     }
 }
